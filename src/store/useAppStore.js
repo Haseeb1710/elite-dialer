@@ -1,5 +1,14 @@
 import { create } from 'zustand';
 
+// Default credentials
+const CREDENTIALS = [
+  { username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User', level: 9 },
+  { username: 'agent1', password: 'agent123', role: 'agent', name: 'Agent John', level: 1 },
+  { username: 'agent2', password: 'agent123', role: 'agent', name: 'Agent Sarah', level: 1 },
+  { username: '6666', password: 'admin123', role: 'admin', name: 'Super Admin', level: 9 },
+  { username: '1001', password: 'agent123', role: 'agent', name: 'Agent Mike', level: 1 },
+];
+
 // Mock data
 const mockContacts = Array.from({ length: 50 }).map((_, i) => ({
   id: `C${i + 1}`,
@@ -21,6 +30,22 @@ const mockRecordings = Array.from({ length: 20 }).map((_, i) => ({
 }));
 
 export const useAppStore = create((set) => ({
+  // Auth State
+  isAuthenticated: false,
+  currentUser: null,
+  userRole: null,
+  
+  login: (username, password, role) => {
+    const user = CREDENTIALS.find(c => c.username === username && c.password === password && c.role === role);
+    if (user) {
+      set({ isAuthenticated: true, currentUser: user, userRole: user.role });
+      return { success: true };
+    }
+    return { success: false, message: 'Invalid username or password. Please try again.' };
+  },
+  
+  logout: () => set({ isAuthenticated: false, currentUser: null, userRole: null }),
+
   // CRM State
   contacts: mockContacts,
   recordings: mockRecordings,
