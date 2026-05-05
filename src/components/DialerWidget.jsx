@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, Hash, Users, X, ChevronUp, ChevronDown, UserPlus } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, Hash, Users, X, ChevronUp, ChevronDown, UserPlus, Clipboard, Delete } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 export default function DialerWidget() {
@@ -56,8 +56,34 @@ export default function DialerWidget() {
             </div>
 
             <div style={{ background: 'var(--surface-color)', padding: '16px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-              <div className="dial-display">
-                {isCalling ? currentCallState.number : currentInput || 'Enter Number'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="dial-display" style={{ flex: 1 }}>
+                  {isCalling ? currentCallState.number : currentInput || 'Enter Number'}
+                </div>
+                {!isCalling && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <button
+                      title="Paste number"
+                      onClick={async () => {
+                        try {
+                          const text = await navigator.clipboard.readText();
+                          const cleaned = text.replace(/[^0-9+*#]/g, '');
+                          if (cleaned) setCurrentInput(cleaned);
+                        } catch (e) { /* clipboard not available */ }
+                      }}
+                      style={{ background: '#e0f2fe', border: '1px solid #7dd3fc', borderRadius: '8px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Clipboard size={16} color="#0369a1" />
+                    </button>
+                    <button
+                      title="Backspace"
+                      onClick={() => setCurrentInput(prev => prev.slice(0, -1))}
+                      style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Delete size={16} color="#dc2626" />
+                    </button>
+                  </div>
+                )}
               </div>
               
               {isCalling && (

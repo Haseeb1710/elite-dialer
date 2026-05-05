@@ -10,11 +10,17 @@ export default function AgentScreen() {
     simulateIncomingCall, 
     hangupAutodialer, 
     submitDisposition,
-    customFieldsSetup
+    customFieldsSetup,
+    selectedCampaign,
+    campaigns
   } = useAppStore();
+
+  const campaignInfo = campaigns.find(c => c.id === selectedCampaign);
 
   const [dispoCode, setDispoCode] = useState('');
   const [isMuted, setIsMuted] = useState(false);
+  const [pauseAfterSubmit, setPauseAfterSubmit] = useState(false);
+  const [lastDialedNumber, setLastDialedNumber] = useState('');
   
   // Conference/Transfer State
   const [conferenceState, setConferenceState] = useState({
@@ -35,10 +41,20 @@ export default function AgentScreen() {
     return () => clearTimeout(timeout);
   }, [agentStatus, simulateIncomingCall]);
 
+  // Track last dialed number when a call connects
+  useEffect(() => {
+    if (currentLead?.phone) {
+      setLastDialedNumber(currentLead.phone);
+    }
+  }, [currentLead]);
+
   const handleDispositionSubmit = () => {
     if (dispoCode) {
       submitDisposition(dispoCode);
       setDispoCode('');
+      if (pauseAfterSubmit) {
+        setAgentStatus('PAUSED');
+      }
     }
   };
 
@@ -55,7 +71,12 @@ export default function AgentScreen() {
           <div style={{ width: '1px', height: '30px', background: 'rgba(255,255,255,0.3)' }}></div>
           <div>
             <div style={{ fontSize: '12px', opacity: 0.8 }}>Campaign</div>
-            <div style={{ fontSize: '16px', fontWeight: '500' }}>TESTCAMP - B2B Sales</div>
+            <div style={{ fontSize: '16px', fontWeight: '500' }}>{campaignInfo ? `${campaignInfo.id} - ${campaignInfo.name}` : 'No Campaign'}</div>
+          </div>
+          <div style={{ width: '1px', height: '30px', background: 'rgba(255,255,255,0.3)' }}></div>
+          <div>
+            <div style={{ fontSize: '12px', opacity: 0.8 }}>Last Dialed</div>
+            <div style={{ fontSize: '16px', fontWeight: '500', fontFamily: 'monospace', letterSpacing: '0.5px' }}>{lastDialedNumber || '—'}</div>
           </div>
         </div>
         
@@ -206,36 +227,55 @@ export default function AgentScreen() {
           )}
         </div>
 
-        {/* Script Panel */}
-        <div className="card" style={{ flex: 1, background: '#f8fafc' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '16px' }}>
-            <FileText size={20} /> Campaign Script
-          </h2>
-          {currentLead ? (
-            <div className="animate-fade-in" style={{ fontSize: '15px', lineHeight: '1.6', color: 'var(--text-main)' }}>
-              <p>Hi, is <strong>{currentLead.name}</strong> available?</p>
-              <br/>
-              <p>Hello <strong>{currentLead.name}</strong>, my name is Admin from Elite Services.</p>
-              <br/>
-              <p>I noticed you are currently with <strong>{currentLead.company}</strong>. We are offering a new enterprise dialer solution that integrates directly with your existing infrastructure.</p>
-              <br/>
-              <p>Do you have a quick minute to discuss how we can improve your call center efficiency by 40%?</p>
-            </div>
-          ) : (
-            <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '40px' }}>
-              Script will appear when call connects.
-            </div>
-          )}
-        </div>
+        {/* Right Panel: Script (during call) → Disposition (after hangup) */}
+        <div className="card" style={{ flex: 1, background: agentStatus === 'DISPO' ? '#fff' : '#f8fafc', border: agentStatus === 'DISPO' ? '2px solid var(--primary-blue)' : undefined }}>
+          
+          {agentStatus === 'DISPO' ? (
+            /* ===== DISPOSITION MODE ===== */
+            <div className="animate-fade-in">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '2px solid var(--primary-blue)', paddingBottom: '16px', marginBottom: '16px', color: 'var(--primary-blue)' }}>
+                <CheckCircle size={20} /> Call Disposition
+              </h2>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: '13px' }}>Select an outcome for this call to continue.</p>
 
-        {/* Disposition Overlay */}
-        {agentStatus === 'DISPO' && (
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-            <div className="card animate-slide-up" style={{ width: '400px', boxShadow: 'var(--shadow-lg)', border: '2px solid var(--primary-blue)' }}>
-              <h2 style={{ textAlign: 'center', marginBottom: '8px' }}>Call Disposition</h2>
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: '24px' }}>Select an outcome for this call to continue.</p>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+              {/* Lead Info Summary */}
+              {currentLead && (
+                <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '14px 16px', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Lead Info</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const text = `Name: ${currentLead.name}\nPhone: ${currentLead.phone}\nEmail: ${currentLead.email}\nCompany: ${currentLead.company}`;
+                        navigator.clipboard.writeText(text);
+                      }}
+                      style={{ fontSize: '11px', fontWeight: 600, color: '#0369a1', background: '#e0f2fe', border: '1px solid #7dd3fc', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}
+                    >
+                      📋 Copy All
+                    </button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div>
+                      <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Name</div>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', cursor: 'text', userSelect: 'text' }}>{currentLead.name}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Phone</div>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0369a1', cursor: 'text', userSelect: 'text', fontFamily: 'monospace' }}>{currentLead.phone}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Email</div>
+                      <div style={{ fontSize: '13px', color: '#0f172a', cursor: 'text', userSelect: 'text' }}>{currentLead.email}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Company</div>
+                      <div style={{ fontSize: '13px', color: '#0f172a', cursor: 'text', userSelect: 'text' }}>{currentLead.company}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
                 {['SALE - Made Sale', 'NI - Not Interested', 'CB - Call Back', 'VM - Voicemail', 'DNC - Do Not Call', 'DEC - Declined'].map(code => (
                   <button 
                     key={code} 
@@ -244,7 +284,8 @@ export default function AgentScreen() {
                       justifyContent: 'flex-start', 
                       background: dispoCode === code ? 'var(--primary-blue)' : 'var(--bg-color)',
                       color: dispoCode === code ? 'white' : 'var(--text-main)',
-                      border: '1px solid var(--border-color)'
+                      border: '1px solid var(--border-color)',
+                      padding: '10px 14px',
                     }}
                     onClick={() => setDispoCode(code)}
                   >
@@ -255,15 +296,47 @@ export default function AgentScreen() {
 
               <button 
                 className="btn btn-success" 
-                style={{ width: '100%', padding: '12px', fontSize: '16px' }}
+                style={{ width: '100%', padding: '12px', fontSize: '15px' }}
                 disabled={!dispoCode}
                 onClick={handleDispositionSubmit}
               >
-                Submit & Next Call <ChevronRight size={20} />
+                {pauseAfterSubmit ? 'Submit & Pause' : 'Submit & Next Call'} <ChevronRight size={20} />
               </button>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', cursor: 'pointer', justifyContent: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={pauseAfterSubmit}
+                  onChange={(e) => setPauseAfterSubmit(e.target.checked)}
+                  style={{ width: '16px', height: '16px', accentColor: '#f59e0b', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, userSelect: 'none' }}>Pause dialer after submit</span>
+              </label>
             </div>
-          </div>
-        )}
+          ) : (
+            /* ===== SCRIPT MODE ===== */
+            <>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '16px' }}>
+                <FileText size={20} /> Campaign Script
+              </h2>
+              {currentLead ? (
+                <div className="animate-fade-in" style={{ fontSize: '15px', lineHeight: '1.6', color: 'var(--text-main)' }}>
+                  <p>Hi, is <strong>{currentLead.name}</strong> available?</p>
+                  <br/>
+                  <p>Hello <strong>{currentLead.name}</strong>, my name is Admin from Elite Services.</p>
+                  <br/>
+                  <p>I noticed you are currently with <strong>{currentLead.company}</strong>. We are offering a new enterprise dialer solution that integrates directly with your existing infrastructure.</p>
+                  <br/>
+                  <p>Do you have a quick minute to discuss how we can improve your call center efficiency by 40%?</p>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '40px' }}>
+                  Script will appear when call connects.
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
       </div>
     </div>

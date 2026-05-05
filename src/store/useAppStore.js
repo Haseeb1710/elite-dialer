@@ -34,17 +34,18 @@ export const useAppStore = create((set) => ({
   isAuthenticated: false,
   currentUser: null,
   userRole: null,
+  selectedCampaign: null,
   
-  login: (username, password, role) => {
+  login: (username, password, role, campaignId) => {
     const user = CREDENTIALS.find(c => c.username === username && c.password === password && c.role === role);
     if (user) {
-      set({ isAuthenticated: true, currentUser: user, userRole: user.role });
+      set({ isAuthenticated: true, currentUser: user, userRole: user.role, selectedCampaign: campaignId || null });
       return { success: true };
     }
     return { success: false, message: 'Invalid username or password. Please try again.' };
   },
   
-  logout: () => set({ isAuthenticated: false, currentUser: null, userRole: null }),
+  logout: () => set({ isAuthenticated: false, currentUser: null, userRole: null, selectedCampaign: null }),
 
   // CRM State
   contacts: mockContacts,

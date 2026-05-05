@@ -1,23 +1,30 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { Phone, Shield, Headphones, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Phone, Shield, Headphones, Eye, EyeOff, AlertCircle, Megaphone } from 'lucide-react';
 
 export default function Login() {
-  const { login } = useAppStore();
+  const { login, campaigns } = useAppStore();
   const [role, setRole] = useState(null); // null = selection screen, 'admin' or 'agent'
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedCampaign, setSelectedCampaign] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const activeCampaigns = campaigns.filter(c => c.status === 'ACTIVE');
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
+    if (role === 'agent' && !selectedCampaign) {
+      setError('Please select a campaign to dial.');
+      return;
+    }
     setIsLoading(true);
     
     setTimeout(() => {
-      const result = login(username, password, role);
+      const result = login(username, password, role, selectedCampaign);
       if (!result.success) {
         setError(result.message);
       }
@@ -130,16 +137,47 @@ export default function Login() {
             </div>
           </div>
 
+          {/* Campaign Selector for Agents */}
+          {!isAdmin && (
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Megaphone size={14} color="#10b981" />
+                  Select Campaign
+                </span>
+              </label>
+              <select
+                value={selectedCampaign}
+                onChange={(e) => setSelectedCampaign(e.target.value)}
+                style={{ ...styles.input, cursor: 'pointer', appearance: 'auto' }}
+                required
+              >
+                <option value="">-- Choose a campaign --</option>
+                {activeCampaigns.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.id} - {c.name} ({c.method})
+                  </option>
+                ))}
+              </select>
+              {selectedCampaign && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', padding: '8px 12px', background: '#ecfdf5', borderRadius: '8px', border: '1px solid #a7f3d0' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+                  <span style={{ fontSize: '12px', color: '#065f46', fontWeight: 500 }}>Campaign ready: {activeCampaigns.find(c => c.id === selectedCampaign)?.name}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           <button type="submit" disabled={isLoading} style={{ ...styles.submitBtn, background: gradientBg, opacity: isLoading ? 0.7 : 1 }}>
             {isLoading ? (
               <div style={styles.spinner}></div>
             ) : (
-              <>Sign In</>
+              <>{isAdmin ? 'Sign In' : 'Sign In & Start Dialing'}</>
             )}
           </button>
         </form>
 
-        <button onClick={() => { setRole(null); setError(''); setUsername(''); setPassword(''); }} style={styles.backBtn}>
+        <button onClick={() => { setRole(null); setError(''); setUsername(''); setPassword(''); setSelectedCampaign(''); }} style={styles.backBtn}>
           ← Back to role selection
         </button>
 
