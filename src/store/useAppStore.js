@@ -50,6 +50,8 @@ export const useAppStore = create((set) => ({
   // CRM State
   contacts: mockContacts,
   recordings: mockRecordings,
+  addContact: (contact) => set((state) => ({ contacts: [...state.contacts, contact] })),
+  addContacts: (newContacts) => set((state) => ({ contacts: [...state.contacts, ...newContacts] })),
   
   // Dialer State
   isDialerOpen: false,
@@ -195,6 +197,9 @@ export const useAppStore = create((set) => ({
     { id: '1001', name: 'Web Leads - March', campaign: '1001 - SALESOUT', active: 'N', leads: 500, dialed: 500 },
   ],
   addList: (list) => set((state) => ({ lists: [...state.lists, list] })),
+  updateListLeadCount: (listId, count) => set((state) => ({
+    lists: state.lists.map(l => l.id === listId ? { ...l, leads: l.leads + count } : l)
+  })),
 
   // ===== SCRIPTS =====
   scripts: [],
